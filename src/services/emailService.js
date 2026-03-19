@@ -1,40 +1,6 @@
-const nodemailer = require('nodemailer');
+const sgMail = require('@sendgrid/mail');
 const fs = require('fs');
 const path = require('path');
-
-let transporter;
-
-function getTransporter() {
-  if (transporter) return transporter;
-
-  if (process.env.SENDGRID_API_KEY) {
-    // SendGrid via SMTP relay
-    transporter = nodemailer.createTransport({
-      host: 'smtp.sendgrid.net',
-      port: 587,
-      secure: false,
-      auth: {
-        user: 'apikey',
-        pass: process.env.SENDGRID_API_KEY,
-      },
-    });
-  } else if (process.env.SMTP_HOST) {
-    // Generic SMTP
-    transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587', 10),
-      secure: parseInt(process.env.SMTP_PORT || '587', 10) === 465,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-  } else {
-    throw new Error('No email transport configured. Set SENDGRID_API_KEY or SMTP_HOST/SMTP_USER/SMTP_PASS.');
-  }
-
-  return transporter;
-}
 
 /**
  * Build the HTML email body from the template.
@@ -56,6 +22,12 @@ function buildEmailHtml(invoice) {
     </tr>`
   ).join('\n');
 
+  const logoPath = path.join(__dirname, '..', '..', 'assets', 'palmetto-peptides-logo.jpg');
+  let logoBase64 = '';
+  if (fs.existsSync(logoPath)) {
+    logoBase64 = `data:image/jpeg;base64,${fs.readFileSync(logoPath).toString('base64')}`;
+  }
+
   const replacements = {
     '{{invoice_number}}': invoice.invoice_number,
     '{{customer_name}}': escapeHtml(invoice.customer_name),
@@ -68,7 +40,7 @@ function buildEmailHtml(invoice) {
     '{{date}}': new Date(invoice.created_at).toLocaleDateString('en-US', {
       year: 'numeric', month: 'long', day: 'numeric',
     }),
-    '{{logo_url}}': 'cid:palmetto-logo',
+    '{{logo_url}}': logoBase64 || 'https://palmettopeptides.com/cdn/shop/files/logo.png',
   };
 
   for (const [token, value] of Object.entries(replacements)) {
@@ -79,42 +51,39 @@ function buildEmailHtml(invoice) {
 }
 
 /**
- * Send the invoice email with PDF attachment.
+ * Send the invoice email via SendGrid HTTP API.
  */
 async function sendInvoiceEmail(invoice, pdfBuffer) {
-  const html = buildEmailHtml(invoice);
-  const transport = getTransporter();
+  const apiKey = process.env.SENDGRID_API_KEY;
+  if (!apiKey) throw new Error('SENDGRID_API_KEY not set');
 
-  const mailOptions = {
-    from: process.env.EMAIL_FROM || 'invoices@palmettopeptides.com',
+  sgMail.setApiKey(apiKey);
+
+  const html = buildEmailHtml(invoice);
+
+  const fromName = process.env.EMAIL_FROM_NAME || 'Palmetto Peptides';
+  const fromEmail = process.env.EMAIL_FROM || 'support@palmettopeptides.com';
+
+  const msg = {
     to: invoice.customer_email,
+    from: { email: fromEmail, name: fromName },
     subject: `Invoice ${invoice.invoice_number} — Palmetto Peptides`,
     html,
     attachments: [],
   };
 
-  // Inline logo
-  const logoPath = path.join(__dirname, '..', '..', 'assets', 'palmetto-peptides-logo.jpg');
-  if (fs.existsSync(logoPath)) {
-    mailOptions.attachments.push({
-      filename: 'palmetto-logo.jpg',
-      path: logoPath,
-      cid: 'palmetto-logo',
-      contentType: 'image/jpeg',
-    });
-  }
-
   if (pdfBuffer) {
-    mailOptions.attachments.push({
+    msg.attachments.push({
       filename: `${invoice.invoice_number}.pdf`,
-      content: pdfBuffer,
-      contentType: 'application/pdf',
+      content: pdfBuffer.toString('base64'),
+      type: 'application/pdf',
+      disposition: 'attachment',
     });
   }
 
-  const info = await transport.sendMail(mailOptions);
-  console.log(`[email] Sent invoice ${invoice.invoice_number} to ${invoice.customer_email} — messageId: ${info.messageId}`);
-  return info;
+  const [response] = await sgMail.send(msg);
+  console.log(`[email] Sent invoice ${invoice.invoice_number} to ${invoice.customer_email} — status: ${response.statusCode}`);
+  return response;
 }
 
 function escapeHtml(str) {
