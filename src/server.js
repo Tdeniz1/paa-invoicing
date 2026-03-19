@@ -165,7 +165,13 @@ app.get('/payment/cancelled', (req, res) => {
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    stripe: !!process.env.STRIPE_SECRET_KEY,
+    sendgrid: !!process.env.SENDGRID_API_KEY,
+    appUrl: process.env.APP_URL || 'NOT SET',
+  });
 });
 
 // --- Start ---
