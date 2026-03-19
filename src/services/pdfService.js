@@ -33,15 +33,24 @@ async function generateInvoicePdf(invoice) {
   // Parse customer address
   let addressLines = [];
   if (invoice.customer_address) {
-    const addr = typeof invoice.customer_address === 'string'
-      ? JSON.parse(invoice.customer_address)
-      : invoice.customer_address;
-    addressLines = [
-      addr.address1,
-      addr.address2,
-      [addr.city, addr.province, addr.zip].filter(Boolean).join(', '),
-      addr.country,
-    ].filter(Boolean);
+    try {
+      const addr = typeof invoice.customer_address === 'string'
+        ? JSON.parse(invoice.customer_address)
+        : invoice.customer_address;
+      if (typeof addr === 'object') {
+        addressLines = [
+          addr.address1,
+          addr.address2,
+          [addr.city, addr.province, addr.zip].filter(Boolean).join(', '),
+          addr.country,
+        ].filter(Boolean);
+      } else {
+        addressLines = [String(addr)];
+      }
+    } catch (e) {
+      // Plain string address
+      addressLines = [String(invoice.customer_address)];
+    }
   }
 
   const paymentUrl = invoice.stripe_payment_link || '#';
