@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: #1a1a1a;
+    font-size: 13px;
+    line-height: 1.5;
+    background: #fff;
+  }
+  .invoice-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 3px solid #1b5e20;
+  }
+  .header-logo img {
+    max-height: 70px;
+    max-width: 220px;
+  }
+  .header-info {
+    text-align: right;
+  }
+  .header-info h1 {
+    font-size: 28px;
+    color: #1b5e20;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+  }
+  .header-info .invoice-number {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+  }
+  .header-info .meta {
+    font-size: 12px;
+    color: #666;
+    margin-top: 2px;
+  }
+
+  /* Status badge */
+  .status-badge {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 6px;
+  }
+  .status-pending {
+    background: #fff3e0;
+    color: #e65100;
+    border: 1px solid #ffcc80;
+  }
+  .status-paid {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #a5d6a7;
+  }
+
+  /* Bill To / Ship To */
+  .addresses {
+    display: flex;
+    gap: 40px;
+    margin-bottom: 30px;
+  }
+  .address-block {
+    flex: 1;
+  }
+  .address-block h3 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #1b5e20;
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+  .address-block p {
+    font-size: 13px;
+    color: #333;
+  }
+
+  /* Order reference */
+  .order-ref {
+    background: #f5f5f5;
+    padding: 10px 16px;
+    border-radius: 4px;
+    margin-bottom: 24px;
+    font-size: 12px;
+    color: #555;
+  }
+
+  /* Line items table */
+  .items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 24px;
+  }
+  .items-table thead th {
+    background: #1b5e20;
+    color: #fff;
+    padding: 10px 12px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+    text-align: left;
+  }
+  .items-table thead th.center { text-align: center; }
+  .items-table thead th.right { text-align: right; }
+  .items-table tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e0e0e0;
+    font-size: 13px;
+  }
+  .items-table tbody td.center { text-align: center; }
+  .items-table tbody td.right { text-align: right; }
+  .items-table tbody tr:last-child td {
+    border-bottom: 2px solid #1b5e20;
+  }
+
+  /* Totals */
+  .totals {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 30px;
+  }
+  .totals-table {
+    width: 280px;
+  }
+  .totals-table .row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 13px;
+    color: #555;
+  }
+  .totals-table .row.total {
+    border-top: 2px solid #1b5e20;
+    margin-top: 4px;
+    padding-top: 10px;
+    font-size: 18px;
+    font-weight: 700;
+    color: #1b5e20;
+  }
+
+  /* Payment section */
+  .payment-section {
+    background: #e8f5e9;
+    border: 1px solid #a5d6a7;
+    border-radius: 6px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 30px;
+  }
+  .payment-section h3 {
+    color: #1b5e20;
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+  .payment-section a {
+    display: inline-block;
+    background: #1b5e20;
+    color: #fff;
+    padding: 10px 30px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    margin-top: 6px;
+  }
+  .payment-section .link-text {
+    font-size: 11px;
+    color: #666;
+    margin-top: 8px;
+    word-break: break-all;
+  }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding-top: 20px;
+    border-top: 1px solid #e0e0e0;
+    font-size: 11px;
+    color: #999;
+  }
+  .footer strong {
+    color: #1b5e20;
+  }
+</style>
+</head>
+<body>
+  <div class="invoice-container">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="header-logo">
+        <img src="{{logo_src}}" alt="Palmetto Peptides">
+      </div>
+      <div class="header-info">
+        <h1>INVOICE</h1>
+        <div class="invoice-number">{{invoice_number}}</div>
+        <div class="meta">Date: {{date}}</div>
+        <div class="meta">Due: {{due_date}} (NET 7)</div>
+        <span class="status-badge status-{{status}}">{{status}}</span>
+      </div>
+    </div>
+
+    <!-- Addresses -->
+    <div class="addresses">
+      <div class="address-block">
+        <h3>Bill To</h3>
+        <p><strong>{{customer_name}}</strong></p>
+        <p>{{customer_email}}</p>
+        <p>{{customer_address}}</p>
+      </div>
+      <div class="address-block">
+        <h3>From</h3>
+        <p><strong>Palmetto Peptides</strong></p>
+        <p>palmettopeptides.com</p>
+        <p>Support@palmettopeps.com</p>
+      </div>
+    </div>
+
+    <!-- Order reference -->
+    <div class="order-ref" style="{{shopify_order_number}}? '' : 'display:none'">
+      Shopify Order: <strong>{{shopify_order_number}}</strong>
+    </div>
+
+    <!-- Line Items -->
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th class="center">Qty</th>
+          <th class="right">Unit Price</th>
+          <th class="right">Subtotal</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{line_items_rows}}
+      </tbody>
+    </table>
+
+    <!-- Totals -->
+    <div class="totals">
+      <div class="totals-table">
+        <div class="row">
+          <span>Subtotal</span>
+          <span>${{subtotal}}</span>
+        </div>
+        <div class="row">
+          <span>Shipping</span>
+          <span>${{shipping}}</span>
+        </div>
+        <div class="row">
+          <span>Tax</span>
+          <span>${{tax}}</span>
+        </div>
+        <div class="row total">
+          <span>Total</span>
+          <span>${{total}}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment -->
+    <div class="payment-section">
+      <h3>Pay This Invoice Online</h3>
+      <a href="{{payment_link}}">Pay Now — ${{total}}</a>
+      <div class="link-text">{{payment_link}}</div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <strong>Palmetto Peptides</strong> | palmettopeptides.com | Support@palmettopeps.com<br>
+      Thank you for your business.
+    </div>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background:#111;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#111;padding:30px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#1a1a1a;border-radius:8px;overflow:hidden;">
+
+          <!-- Green header bar with logo -->
+          <tr>
+            <td style="background:#1b5e20;padding:20px 32px;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td>
+                    <img src="{{logo_url}}" alt="Palmetto Peptides" style="height:52px;width:auto;display:block;" />
+                  </td>
+                  <td align="right">
+                    <span style="color:rgba(255,255,255,0.8);font-size:13px;">Invoice</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px;">
+
+              <!-- Greeting -->
+              <p style="color:#e0e0e0;font-size:15px;margin:0 0 20px;">
+                Hi {{customer_name}},
+              </p>
+              <p style="color:#bbb;font-size:14px;margin:0 0 24px;line-height:1.6;">
+                Here's your invoice <strong style="color:#fff;">{{invoice_number}}</strong> from Palmetto Peptides.
+                Please find the PDF attached and use the button below to complete your payment.
+              </p>
+
+              <!-- Invoice summary card -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#222;border-radius:6px;margin-bottom:24px;">
+                <tr>
+                  <td style="padding:20px;">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="color:#888;font-size:11px;text-transform:uppercase;letter-spacing:1px;padding-bottom:4px;">Invoice #</td>
+                        <td align="right" style="color:#888;font-size:11px;text-transform:uppercase;letter-spacing:1px;padding-bottom:4px;">Date</td>
+                      </tr>
+                      <tr>
+                        <td style="color:#fff;font-size:15px;font-weight:600;">{{invoice_number}}</td>
+                        <td align="right" style="color:#ccc;font-size:14px;">{{date}}</td>
+                      </tr>
+                    </table>
+
+                    <!-- Line items -->
+                    <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;border-top:1px solid #333;padding-top:12px;">
+                      <tr>
+                        <td style="color:#888;font-size:11px;text-transform:uppercase;letter-spacing:1px;padding:4px 0;">Item</td>
+                        <td style="color:#888;font-size:11px;text-transform:uppercase;letter-spacing:1px;padding:4px 0;text-align:center;">Qty</td>
+                        <td style="color:#888;font-size:11px;text-transform:uppercase;letter-spacing:1px;padding:4px 0;text-align:right;">Price</td>
+                        <td style="color:#888;font-size:11px;text-transform:uppercase;letter-spacing:1px;padding:4px 0;text-align:right;">Total</td>
+                      </tr>
+                      {{line_items_rows}}
+                    </table>
+
+                    <!-- Totals -->
+                    <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;border-top:1px solid #333;padding-top:12px;">
+                      <tr>
+                        <td style="color:#999;font-size:13px;padding:3px 0;">Subtotal</td>
+                        <td align="right" style="color:#ccc;font-size:13px;padding:3px 0;">${{subtotal}}</td>
+                      </tr>
+                      <tr>
+                        <td style="color:#999;font-size:13px;padding:3px 0;">Shipping</td>
+                        <td align="right" style="color:#ccc;font-size:13px;padding:3px 0;">${{shipping}}</td>
+                      </tr>
+                      <tr>
+                        <td style="color:#999;font-size:13px;padding:3px 0;">Tax</td>
+                        <td align="right" style="color:#ccc;font-size:13px;padding:3px 0;">${{tax}}</td>
+                      </tr>
+                      <tr>
+                        <td style="color:#fff;font-size:18px;font-weight:700;padding:10px 0 0;border-top:1px solid #444;">Total Due</td>
+                        <td align="right" style="color:#4caf50;font-size:18px;font-weight:700;padding:10px 0 0;border-top:1px solid #444;">${{total}}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Pay button -->
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center" style="padding:8px 0 24px;">
+                    <a href="{{payment_link}}" style="display:inline-block;background:#1b5e20;color:#fff;padding:14px 40px;border-radius:6px;text-decoration:none;font-size:16px;font-weight:700;letter-spacing:0.5px;">
+                      Pay Now &mdash; ${{total}}
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="color:#777;font-size:12px;margin:0;line-height:1.6;text-align:center;">
+                Payment is due within 7 days. If you have any questions, reply to this email or contact us at Support@palmettopeps.com.
+              </p>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#111;padding:20px 32px;border-top:1px solid #333;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="color:#555;font-size:11px;">
+                    Palmetto Peptides &bull; palmettopeptides.com
+                  </td>
+                  <td align="right" style="color:#555;font-size:11px;">
+                    Support@palmettopeps.com
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

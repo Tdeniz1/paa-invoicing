@@ -1,0 +1,22 @@
+{
+  "name": "palmetto-invoicing",
+  "version": "1.0.0",
+  "description": "Branded invoice generation, email delivery, and Stripe payment processing for Palmetto Peptides",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.7.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "nodemailer": "^6.9.16",
+    "puppeteer": "^24.2.1",
+    "stripe": "^17.5.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "private": true
+}
