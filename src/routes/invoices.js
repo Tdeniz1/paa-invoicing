@@ -55,11 +55,15 @@ router.post('/', async (req, res) => {
 
 // Send invoice (generate PDF + email + Stripe link)
 router.post('/:id/send', async (req, res) => {
+  const id = parseInt(req.params.id);
+  console.log(`[invoices] Send requested for ID ${id}`);
   try {
-    const invoice = await processAndSendInvoice(parseInt(req.params.id));
+    console.log(`[invoices] Step 1: Creating Stripe session...`);
+    const invoice = await processAndSendInvoice(id);
+    console.log(`[invoices] Done: ${invoice.invoice_number}`);
     res.json({ invoice, message: 'Invoice sent successfully' });
   } catch (err) {
-    console.error('[invoices] Send error:', err);
+    console.error('[invoices] Send error:', err.message, err.stack);
     res.status(500).json({ error: err.message });
   }
 });

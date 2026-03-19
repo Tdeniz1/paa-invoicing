@@ -4,7 +4,10 @@ let stripe;
 
 function getStripe() {
   if (!stripe) {
-    stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      timeout: 10000, // 10 second timeout
+      maxNetworkRetries: 1,
+    });
   }
   return stripe;
 }

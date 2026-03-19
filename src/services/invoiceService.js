@@ -62,17 +62,23 @@ async function processAndSendInvoice(invoiceId) {
   if (!invoice) throw new Error(`Invoice ${invoiceId} not found`);
 
   // 1. Create Stripe Checkout Session
+  console.log(`[invoice] Creating Stripe session for ${invoice.invoice_number}...`);
   const session = await createCheckoutSession(invoice);
+  console.log(`[invoice] Stripe session created: ${session.id}`);
   invoice = db.updateInvoice(invoice.id, {
     stripe_payment_link: session.url,
     stripe_session_id: session.id,
   });
 
   // 2. Generate PDF
+  console.log(`[invoice] Generating PDF...`);
   const pdfBuffer = await generateInvoicePdf(invoice);
+  console.log(`[invoice] PDF generated: ${pdfBuffer.length} bytes`);
 
   // 3. Send email
+  console.log(`[invoice] Sending email to ${invoice.customer_email}...`);
   await sendInvoiceEmail(invoice, pdfBuffer);
+  console.log(`[invoice] Email sent.`);
 
   console.log(`[invoice] Processed and sent ${invoice.invoice_number} to ${invoice.customer_email}`);
   return invoice;
