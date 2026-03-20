@@ -40,7 +40,13 @@ async function initSchema() {
 
 // --- Invoice Queries ---
 
-async function nextInvoiceNumber() {
+async function nextInvoiceNumber(shopifyOrderNumber) {
+  // If we have a Shopify order number (e.g. "#1027"), use PP-1027
+  if (shopifyOrderNumber) {
+    const num = shopifyOrderNumber.replace(/^#/, '').trim();
+    return `PP-${num}`;
+  }
+  // Fallback: sequential PP-YYYY-NNNN for manual invoices
   const year = new Date().getFullYear();
   const prefix = `PP-${year}-`;
   const { rows } = await pool.query(
@@ -57,7 +63,7 @@ async function nextInvoiceNumber() {
 
 async function createInvoice(data) {
   await initSchema();
-  const invoiceNumber = await nextInvoiceNumber();
+  const invoiceNumber = await nextInvoiceNumber(data.shopify_order_number);
   const lineItems = typeof data.line_items === 'string' ? data.line_items : JSON.stringify(data.line_items);
 
   const { rows } = await pool.query(
