@@ -1,7 +1,10 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 
-const DB_PATH = path.join(__dirname, '..', '..', 'data', 'invoicing.db');
+// Use /app/data on Railway (persistent volume), fallback to local data/ dir
+const DB_PATH = process.env.RAILWAY_VOLUME_MOUNT_PATH
+  ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'invoicing.db')
+  : path.join(__dirname, '..', '..', 'data', 'invoicing.db');
 
 let db;
 
