@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@sendgrid/mail": "^8.1.6",
-    "better-sqlite3": "^11.7.0",
+    "pg": "^8.13.1",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "nodemailer": "^6.9.16",

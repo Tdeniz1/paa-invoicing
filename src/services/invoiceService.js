@@ -7,7 +7,7 @@ const { sendInvoiceEmail } = require('./emailService');
  * Create an invoice from a Shopify order payload.
  * Extracts line items, customer info, and totals.
  */
-function createInvoiceFromShopifyOrder(order) {
+async function createInvoiceFromShopifyOrder(order) {
   const lineItems = (order.line_items || []).map(li => ({
     name: li.title || li.name,
     quantity: li.quantity,
@@ -22,7 +22,7 @@ function createInvoiceFromShopifyOrder(order) {
 
   const customerEmail = order.contact_email || order.email || order.customer?.email || '';
 
-  return db.createInvoice({
+  return await db.createInvoice({
     brand: 'palmetto-peptides',
     shopify_order_id: String(order.id),
     shopify_order_number: order.name || `#${order.order_number}`,
@@ -40,8 +40,8 @@ function createInvoiceFromShopifyOrder(order) {
 /**
  * Create an invoice manually (from admin dashboard).
  */
-function createManualInvoice(data) {
-  return db.createInvoice({
+async function createManualInvoice(data) {
+  return await db.createInvoice({
     brand: data.brand || 'palmetto-peptides',
     customer_name: data.customer_name,
     customer_email: data.customer_email,
@@ -58,14 +58,14 @@ function createManualInvoice(data) {
  * Full flow: create Stripe session, generate PDF, send email.
  */
 async function processAndSendInvoice(invoiceId) {
-  let invoice = db.getInvoiceById(invoiceId);
+  let invoice = await db.getInvoiceById(invoiceId);
   if (!invoice) throw new Error(`Invoice ${invoiceId} not found`);
 
   // 1. Create Stripe Checkout Session
   console.log(`[invoice] Creating Stripe session for ${invoice.invoice_number}...`);
   const session = await createCheckoutSession(invoice);
   console.log(`[invoice] Stripe session created: ${session.id}`);
-  invoice = db.updateInvoice(invoice.id, {
+  invoice = await db.updateInvoice(invoice.id, {
     stripe_payment_link: session.url,
     stripe_session_id: session.id,
   });
@@ -88,13 +88,13 @@ async function processAndSendInvoice(invoiceId) {
  * Resend an existing invoice email (regenerates PDF with current data).
  */
 async function resendInvoice(invoiceId) {
-  const invoice = db.getInvoiceById(invoiceId);
+  const invoice = await db.getInvoiceById(invoiceId);
   if (!invoice) throw new Error(`Invoice ${invoiceId} not found`);
 
   // If no Stripe link exists yet, create one
   if (!invoice.stripe_payment_link) {
     const session = await createCheckoutSession(invoice);
-    db.updateInvoice(invoice.id, {
+    await db.updateInvoice(invoice.id, {
       stripe_payment_link: session.url,
       stripe_session_id: session.id,
     });

@@ -37,14 +37,14 @@ router.post('/shopify/orders', express.raw({ type: 'application/json' }), async 
     }
 
     // Check for duplicate
-    const existing = db.getInvoiceByShopifyOrderId(String(order.id));
+    const existing = await db.getInvoiceByShopifyOrderId(String(order.id));
     if (existing) {
       console.log(`[webhook] Invoice already exists for order ${order.id}: ${existing.invoice_number}`);
       return res.status(200).json({ status: 'duplicate', invoice_number: existing.invoice_number });
     }
 
     // Create invoice record
-    const invoice = createInvoiceFromShopifyOrder(order);
+    const invoice = await createInvoiceFromShopifyOrder(order);
     console.log(`[webhook] Created invoice ${invoice.invoice_number} for order ${order.name}`);
 
     // Process and send (Stripe session + PDF + email) — async, don't block the webhook response

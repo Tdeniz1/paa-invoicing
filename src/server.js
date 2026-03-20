@@ -175,8 +175,18 @@ app.get('/health', (req, res) => {
 });
 
 // --- Start ---
-app.listen(PORT, () => {
-  console.log(`[server] Palmetto Invoicing running on port ${PORT}`);
-  console.log(`[server] Admin dashboard: http://localhost:${PORT}/admin`);
-  console.log(`[server] Health check: http://localhost:${PORT}/health`);
-});
+const { initSchema } = require('./db/database');
+
+initSchema()
+  .then(() => {
+    console.log('[server] Database schema initialized');
+    app.listen(PORT, () => {
+      console.log(`[server] Palmetto Invoicing running on port ${PORT}`);
+      console.log(`[server] Admin dashboard: http://localhost:${PORT}/admin`);
+      console.log(`[server] Health check: http://localhost:${PORT}/health`);
+    });
+  })
+  .catch(err => {
+    console.error('[server] Failed to initialize database:', err);
+    process.exit(1);
+  });

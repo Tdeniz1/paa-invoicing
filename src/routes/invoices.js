@@ -4,9 +4,9 @@ const db = require('../db/database');
 const { createManualInvoice, processAndSendInvoice, resendInvoice } = require('../services/invoiceService');
 
 // Stats for dashboard (must come before /:id to avoid matching "stats" as an id)
-router.get('/stats/summary', (req, res) => {
+router.get('/stats/summary', async (req, res) => {
   try {
-    const stats = db.getStats();
+    const stats = await db.getStats();
     res.json({ stats });
   } catch (err) {
     console.error('[invoices] Stats error:', err);
@@ -15,10 +15,10 @@ router.get('/stats/summary', (req, res) => {
 });
 
 // List invoices (JSON API for admin dashboard)
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { status, limit, offset } = req.query;
-    const invoices = db.listInvoices({
+    const invoices = await db.listInvoices({
       status: status || undefined,
       limit: parseInt(limit) || 100,
       offset: parseInt(offset) || 0,
@@ -31,9 +31,9 @@ router.get('/', (req, res) => {
 });
 
 // Get single invoice
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    const invoice = db.getInvoiceById(parseInt(req.params.id));
+    const invoice = await db.getInvoiceById(parseInt(req.params.id));
     if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
     res.json({ invoice });
   } catch (err) {
@@ -45,7 +45,7 @@ router.get('/:id', (req, res) => {
 // Create invoice manually
 router.post('/', async (req, res) => {
   try {
-    const invoice = createManualInvoice(req.body);
+    const invoice = await createManualInvoice(req.body);
     res.status(201).json({ invoice });
   } catch (err) {
     console.error('[invoices] Create error:', err);
@@ -80,9 +80,9 @@ router.post('/:id/resend', async (req, res) => {
 });
 
 // Mark invoice as paid manually
-router.post('/:id/mark-paid', (req, res) => {
+router.post('/:id/mark-paid', async (req, res) => {
   try {
-    const invoice = db.markPaid(parseInt(req.params.id));
+    const invoice = await db.markPaid(parseInt(req.params.id));
     if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
     res.json({ invoice, message: 'Invoice marked as paid' });
   } catch (err) {
@@ -92,9 +92,9 @@ router.post('/:id/mark-paid', (req, res) => {
 });
 
 // Cancel invoice
-router.post('/:id/cancel', (req, res) => {
+router.post('/:id/cancel', async (req, res) => {
   try {
-    const invoice = db.markCancelled(parseInt(req.params.id));
+    const invoice = await db.markCancelled(parseInt(req.params.id));
     if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
     res.json({ invoice, message: 'Invoice cancelled' });
   } catch (err) {

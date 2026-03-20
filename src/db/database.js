@@ -1,27 +1,17 @@
-const Database = require('better-sqlite3');
-const path = require('path');
+const { Pool } = require('pg');
 
-// Use /app/data (Railway persistent volume mount path), fallback to local data/ dir
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', '..', 'data', 'invoicing.db');
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+});
 
-let db;
+let initialized = false;
 
-function getDb() {
-  if (!db) {
-    const fs = require('fs');
-    fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-    db = new Database(DB_PATH);
-    db.pragma('journal_mode = WAL');
-    db.pragma('foreign_keys = ON');
-    initSchema();
-  }
-  return db;
-}
-
-function initSchema() {
-  db.exec(`
+async function initSchema() {
+  if (initialized) return;
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS invoices (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       invoice_number TEXT UNIQUE NOT NULL,
       brand TEXT NOT NULL DEFAULT 'palmetto-peptides',
       shopify_order_id TEXT,
@@ -37,139 +27,169 @@ function initSchema() {
       stripe_payment_link TEXT,
       stripe_session_id TEXT,
       status TEXT DEFAULT 'pending',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      paid_at DATETIME
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      paid_at TIMESTAMP
     );
 
     CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
     CREATE INDEX IF NOT EXISTS idx_invoices_shopify_order_id ON invoices(shopify_order_id);
     CREATE INDEX IF NOT EXISTS idx_invoices_stripe_session_id ON invoices(stripe_session_id);
   `);
+  initialized = true;
 }
 
 // --- Invoice Queries ---
 
-function nextInvoiceNumber() {
+async function nextInvoiceNumber() {
   const year = new Date().getFullYear();
   const prefix = `PP-${year}-`;
-  const row = db.prepare(`
-    SELECT invoice_number FROM invoices
-    WHERE invoice_number LIKE ?
-    ORDER BY invoice_number DESC LIMIT 1
-  `).get(`${prefix}%`);
+  const { rows } = await pool.query(
+    `SELECT invoice_number FROM invoices
+     WHERE invoice_number LIKE $1
+     ORDER BY invoice_number DESC LIMIT 1`,
+    [`${prefix}%`]
+  );
 
-  if (!row) return `${prefix}0001`;
-  const seq = parseInt(row.invoice_number.split('-').pop(), 10) + 1;
+  if (rows.length === 0) return `${prefix}0001`;
+  const seq = parseInt(rows[0].invoice_number.split('-').pop(), 10) + 1;
   return `${prefix}${String(seq).padStart(4, '0')}`;
 }
 
-function createInvoice(data) {
-  const d = getDb();
-  const invoiceNumber = nextInvoiceNumber();
-  const stmt = d.prepare(`
-    INSERT INTO invoices (
+async function createInvoice(data) {
+  await initSchema();
+  const invoiceNumber = await nextInvoiceNumber();
+  const lineItems = typeof data.line_items === 'string' ? data.line_items : JSON.stringify(data.line_items);
+
+  const { rows } = await pool.query(
+    `INSERT INTO invoices (
       invoice_number, brand, shopify_order_id, shopify_order_number,
       customer_name, customer_email, customer_address,
       line_items, subtotal, shipping, tax, total,
       stripe_payment_link, stripe_session_id, status
-    ) VALUES (
-      @invoice_number, @brand, @shopify_order_id, @shopify_order_number,
-      @customer_name, @customer_email, @customer_address,
-      @line_items, @subtotal, @shipping, @tax, @total,
-      @stripe_payment_link, @stripe_session_id, @status
-    )
-  `);
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+    RETURNING *`,
+    [
+      invoiceNumber,
+      data.brand || 'palmetto-peptides',
+      data.shopify_order_id || null,
+      data.shopify_order_number || null,
+      data.customer_name,
+      data.customer_email,
+      data.customer_address || null,
+      lineItems,
+      data.subtotal,
+      data.shipping || 0,
+      data.tax || 0,
+      data.total,
+      data.stripe_payment_link || null,
+      data.stripe_session_id || null,
+      data.status || 'pending',
+    ]
+  );
 
-  const info = stmt.run({
-    invoice_number: invoiceNumber,
-    brand: data.brand || 'palmetto-peptides',
-    shopify_order_id: data.shopify_order_id || null,
-    shopify_order_number: data.shopify_order_number || null,
-    customer_name: data.customer_name,
-    customer_email: data.customer_email,
-    customer_address: data.customer_address || null,
-    line_items: typeof data.line_items === 'string' ? data.line_items : JSON.stringify(data.line_items),
-    subtotal: data.subtotal,
-    shipping: data.shipping || 0,
-    tax: data.tax || 0,
-    total: data.total,
-    stripe_payment_link: data.stripe_payment_link || null,
-    stripe_session_id: data.stripe_session_id || null,
-    status: data.status || 'pending',
-  });
-
-  return getInvoiceById(info.lastInsertRowid);
+  return rows[0];
 }
 
-function getInvoiceById(id) {
-  return getDb().prepare('SELECT * FROM invoices WHERE id = ?').get(id);
+async function getInvoiceById(id) {
+  await initSchema();
+  const { rows } = await pool.query('SELECT * FROM invoices WHERE id = $1', [id]);
+  return rows[0] || null;
 }
 
-function getInvoiceByNumber(invoiceNumber) {
-  return getDb().prepare('SELECT * FROM invoices WHERE invoice_number = ?').get(invoiceNumber);
+async function getInvoiceByNumber(invoiceNumber) {
+  await initSchema();
+  const { rows } = await pool.query('SELECT * FROM invoices WHERE invoice_number = $1', [invoiceNumber]);
+  return rows[0] || null;
 }
 
-function getInvoiceByShopifyOrderId(orderId) {
-  return getDb().prepare('SELECT * FROM invoices WHERE shopify_order_id = ?').get(orderId);
+async function getInvoiceByShopifyOrderId(orderId) {
+  await initSchema();
+  const { rows } = await pool.query('SELECT * FROM invoices WHERE shopify_order_id = $1', [orderId]);
+  return rows[0] || null;
 }
 
-function getInvoiceByStripeSessionId(sessionId) {
-  return getDb().prepare('SELECT * FROM invoices WHERE stripe_session_id = ?').get(sessionId);
+async function getInvoiceByStripeSessionId(sessionId) {
+  await initSchema();
+  const { rows } = await pool.query('SELECT * FROM invoices WHERE stripe_session_id = $1', [sessionId]);
+  return rows[0] || null;
 }
 
-function listInvoices({ status, limit = 100, offset = 0 } = {}) {
+async function listInvoices({ status, limit = 100, offset = 0 } = {}) {
+  await initSchema();
   if (status) {
-    return getDb().prepare(
-      'SELECT * FROM invoices WHERE status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?'
-    ).all(status, limit, offset);
+    const { rows } = await pool.query(
+      'SELECT * FROM invoices WHERE status = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
+      [status, limit, offset]
+    );
+    return rows;
   }
-  return getDb().prepare(
-    'SELECT * FROM invoices ORDER BY created_at DESC LIMIT ? OFFSET ?'
-  ).all(limit, offset);
+  const { rows } = await pool.query(
+    'SELECT * FROM invoices ORDER BY created_at DESC LIMIT $1 OFFSET $2',
+    [limit, offset]
+  );
+  return rows;
 }
 
-function updateInvoice(id, fields) {
+async function updateInvoice(id, fields) {
+  await initSchema();
   const allowed = [
     'stripe_payment_link', 'stripe_session_id', 'status', 'paid_at',
     'customer_name', 'customer_email', 'customer_address',
   ];
   const sets = [];
-  const values = {};
+  const values = [];
+  let paramIndex = 1;
+
   for (const [key, val] of Object.entries(fields)) {
     if (allowed.includes(key)) {
-      sets.push(`${key} = @${key}`);
-      values[key] = val;
+      sets.push(`${key} = $${paramIndex}`);
+      values.push(val);
+      paramIndex++;
     }
   }
   if (sets.length === 0) return null;
-  values.id = id;
-  getDb().prepare(`UPDATE invoices SET ${sets.join(', ')} WHERE id = @id`).run(values);
-  return getInvoiceById(id);
+
+  values.push(id);
+  const { rows } = await pool.query(
+    `UPDATE invoices SET ${sets.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+    values
+  );
+  return rows[0] || null;
 }
 
-function markPaid(id) {
+async function markPaid(id) {
   return updateInvoice(id, { status: 'paid', paid_at: new Date().toISOString() });
 }
 
-function markCancelled(id) {
+async function markCancelled(id) {
   return updateInvoice(id, { status: 'cancelled' });
 }
 
-function getStats() {
-  const d = getDb();
+async function getStats() {
+  await initSchema();
   const now = new Date();
   const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+
+  const [totalPending, totalPaid, countThisMonth, countPending, countPaid] = await Promise.all([
+    pool.query("SELECT COALESCE(SUM(total), 0) as v FROM invoices WHERE status = 'pending'"),
+    pool.query("SELECT COALESCE(SUM(total), 0) as v FROM invoices WHERE status = 'paid'"),
+    pool.query("SELECT COUNT(*) as v FROM invoices WHERE created_at >= $1", [monthStart]),
+    pool.query("SELECT COUNT(*) as v FROM invoices WHERE status = 'pending'"),
+    pool.query("SELECT COUNT(*) as v FROM invoices WHERE status = 'paid'"),
+  ]);
+
   return {
-    totalPending: d.prepare("SELECT COALESCE(SUM(total), 0) as v FROM invoices WHERE status = 'pending'").get().v,
-    totalPaid: d.prepare("SELECT COALESCE(SUM(total), 0) as v FROM invoices WHERE status = 'paid'").get().v,
-    countThisMonth: d.prepare("SELECT COUNT(*) as v FROM invoices WHERE created_at >= ?").get(monthStart).v,
-    countPending: d.prepare("SELECT COUNT(*) as v FROM invoices WHERE status = 'pending'").get().v,
-    countPaid: d.prepare("SELECT COUNT(*) as v FROM invoices WHERE status = 'paid'").get().v,
+    totalPending: parseFloat(totalPending.rows[0].v),
+    totalPaid: parseFloat(totalPaid.rows[0].v),
+    countThisMonth: parseInt(countThisMonth.rows[0].v, 10),
+    countPending: parseInt(countPending.rows[0].v, 10),
+    countPaid: parseInt(countPaid.rows[0].v, 10),
   };
 }
 
 module.exports = {
-  getDb,
+  initSchema,
+  pool,
   createInvoice,
   getInvoiceById,
   getInvoiceByNumber,

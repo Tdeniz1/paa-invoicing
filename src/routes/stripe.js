@@ -26,14 +26,14 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
 
     try {
       // Find the invoice by Stripe session ID
-      const invoice = db.getInvoiceByStripeSessionId(session.id);
+      const invoice = await db.getInvoiceByStripeSessionId(session.id);
       if (!invoice) {
         console.error(`[stripe] No invoice found for session ${session.id}`);
         return res.status(200).json({ received: true, warning: 'no matching invoice' });
       }
 
       // Mark invoice as paid
-      db.markPaid(invoice.id);
+      await db.markPaid(invoice.id);
       console.log(`[stripe] Marked invoice ${invoice.invoice_number} as paid`);
 
       // Mark the Shopify order as paid
