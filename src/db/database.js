@@ -46,19 +46,24 @@ async function nextInvoiceNumber(shopifyOrderNumber) {
     const num = shopifyOrderNumber.replace(/^#/, '').trim();
     return `PAA-${num}`;
   }
-  // Fallback: sequential PAA-YYYY-NNNN for manual invoices
+  // Sequential PAA-YYYY-NNNN using a sequence table that never resets on delete
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS invoice_sequence (
+      id SERIAL PRIMARY KEY,
+      year INT NOT NULL,
+      last_seq INT NOT NULL DEFAULT 0,
+      UNIQUE(year)
+    )
+  `);
   const year = new Date().getFullYear();
-  const prefix = `PAA-${year}-`;
   const { rows } = await pool.query(
-    `SELECT invoice_number FROM invoices
-     WHERE invoice_number LIKE $1
-     ORDER BY invoice_number DESC LIMIT 1`,
-    [`${prefix}%`]
+    `INSERT INTO invoice_sequence (year, last_seq) VALUES ($1, 1)
+     ON CONFLICT (year) DO UPDATE SET last_seq = invoice_sequence.last_seq + 1
+     RETURNING last_seq`,
+    [year]
   );
-
-  if (rows.length === 0) return `${prefix}0001`;
-  const seq = parseInt(rows[0].invoice_number.split('-').pop(), 10) + 1;
-  return `${prefix}${String(seq).padStart(4, '0')}`;
+  const seq = rows[0].last_seq;
+  return `PAA-${year}-${String(seq).padStart(4, '0')}`;
 }
 
 async function createInvoice(data) {
