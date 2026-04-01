@@ -1,5 +1,5 @@
 {
-  "name": "palmetto-invoicing",
+  "name": "paa-invoicing",
   "version": "1.0.0",
   "description": "Branded invoice generation, email delivery, and Stripe payment processing for Palmetto Peptides",
   "main": "src/server.js",

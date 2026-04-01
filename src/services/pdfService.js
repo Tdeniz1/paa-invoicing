@@ -74,7 +74,7 @@ async function generateInvoicePdf(invoice) {
     doc.rect(0, 0, W, 120).fill(COLORS.bgMedium);
 
     // Logo
-    const logoPath = path.join(__dirname, '..', '..', 'assets', 'palmetto-peptides-logo.jpg');
+    const logoPath = path.join(__dirname, '..', '..', 'assets', 'palmetto-ai-automation-logo.jpg');
     if (fs.existsSync(logoPath)) {
       const logoBuffer = fs.readFileSync(logoPath);
       doc.image(logoBuffer, M, 20, { height: 80 });
@@ -217,7 +217,7 @@ async function generateInvoicePdf(invoice) {
 
     doc.font('Helvetica').fontSize(9).fillColor(COLORS.textMuted);
     doc.text(
-      'Palmetto Peptides  |  palmettopeptides.com  |  support@palmettopeptides.com',
+      'Palmetto AI Automation  |  palmettoaiautomation.com  |  support@palmettoaiautomation.com',
       M,
       footerY + 5,
       { width: W - M * 2, align: 'center' }

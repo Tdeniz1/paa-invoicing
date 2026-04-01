@@ -23,7 +23,7 @@ async function createInvoiceFromShopifyOrder(order) {
   const customerEmail = order.contact_email || order.email || order.customer?.email || '';
 
   return await db.createInvoice({
-    brand: 'palmetto-peptides',
+    brand: 'palmetto-ai-automation',
     shopify_order_id: String(order.id),
     shopify_order_number: order.name || `#${order.order_number}`,
     customer_name: customerName,
@@ -42,7 +42,7 @@ async function createInvoiceFromShopifyOrder(order) {
  */
 async function createManualInvoice(data) {
   return await db.createInvoice({
-    brand: data.brand || 'palmetto-peptides',
+    brand: data.brand || 'palmetto-ai-automation',
     customer_name: data.customer_name,
     customer_email: data.customer_email,
     customer_address: data.customer_address ? JSON.stringify(data.customer_address) : null,

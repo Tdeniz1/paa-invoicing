@@ -137,7 +137,7 @@ app.get('/payment/success', (req, res) => {
   <div class="card">
     <h1>Payment Successful</h1>
     <p>Thank you! Your payment for invoice <span class="invoice">${invoiceNumber}</span> has been received.</p>
-    <p style="margin-top:16px;">Your order will be processed and shipped shortly. You'll receive a confirmation email from Palmetto Peptides.</p>
+    <p style="margin-top:16px;">Your order will be processed and shipped shortly. You'll receive a confirmation email from Palmetto AI Automation.</p>
   </div>
 </body></html>`);
 });
@@ -158,7 +158,7 @@ app.get('/payment/cancelled', (req, res) => {
   <div class="card">
     <h1>Payment Cancelled</h1>
     <p>Your payment for invoice <strong>${invoiceNumber}</strong> was not completed.</p>
-    <p style="margin-top:16px;">If you'd like to complete your payment, check your email for the invoice link or contact <a href="mailto:Support@palmettopeps.com">Support@palmettopeps.com</a>.</p>
+    <p style="margin-top:16px;">If you'd like to complete your payment, check your email for the invoice link or contact <a href="mailto:Support@palmettoaiautomation.com">Support@palmettoaiautomation.com</a>.</p>
   </div>
 </body></html>`);
 });

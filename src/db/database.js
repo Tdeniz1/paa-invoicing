@@ -13,7 +13,7 @@ async function initSchema() {
     CREATE TABLE IF NOT EXISTS invoices (
       id SERIAL PRIMARY KEY,
       invoice_number TEXT UNIQUE NOT NULL,
-      brand TEXT NOT NULL DEFAULT 'palmetto-peptides',
+      brand TEXT NOT NULL DEFAULT 'palmetto-ai-automation',
       shopify_order_id TEXT,
       shopify_order_number TEXT,
       customer_name TEXT NOT NULL,
@@ -41,14 +41,14 @@ async function initSchema() {
 // --- Invoice Queries ---
 
 async function nextInvoiceNumber(shopifyOrderNumber) {
-  // If we have a Shopify order number (e.g. "#1027"), use PP-1027
+  // If we have a Shopify order number (e.g. "#1027"), use PAA-1027
   if (shopifyOrderNumber) {
     const num = shopifyOrderNumber.replace(/^#/, '').trim();
-    return `PP-${num}`;
+    return `PAA-${num}`;
   }
-  // Fallback: sequential PP-YYYY-NNNN for manual invoices
+  // Fallback: sequential PAA-YYYY-NNNN for manual invoices
   const year = new Date().getFullYear();
-  const prefix = `PP-${year}-`;
+  const prefix = `PAA-${year}-`;
   const { rows } = await pool.query(
     `SELECT invoice_number FROM invoices
      WHERE invoice_number LIKE $1
@@ -76,7 +76,7 @@ async function createInvoice(data) {
     RETURNING *`,
     [
       invoiceNumber,
-      data.brand || 'palmetto-peptides',
+      data.brand || 'palmetto-ai-automation',
       data.shopify_order_id || null,
       data.shopify_order_number || null,
       data.customer_name,

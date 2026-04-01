@@ -22,7 +22,7 @@ function buildEmailHtml(invoice) {
     </tr>`
   ).join('\n');
 
-  const logoPath = path.join(__dirname, '..', '..', 'assets', 'palmetto-peptides-logo.jpg');
+  const logoPath = path.join(__dirname, '..', '..', 'assets', 'palmetto-ai-automation-logo.jpg');
   let logoBase64 = '';
   if (fs.existsSync(logoPath)) {
     logoBase64 = `data:image/jpeg;base64,${fs.readFileSync(logoPath).toString('base64')}`;
@@ -40,7 +40,7 @@ function buildEmailHtml(invoice) {
     '{{date}}': new Date(invoice.created_at).toLocaleDateString('en-US', {
       year: 'numeric', month: 'long', day: 'numeric',
     }),
-    '{{logo_url}}': logoBase64 || 'https://palmettopeptides.com/cdn/shop/files/logo.png',
+    '{{logo_url}}': logoBase64 || 'https://palmettoaiautomation.com/cdn/shop/files/logo.png',
   };
 
   for (const [token, value] of Object.entries(replacements)) {
@@ -61,13 +61,13 @@ async function sendInvoiceEmail(invoice, pdfBuffer) {
 
   const html = buildEmailHtml(invoice);
 
-  const fromName = process.env.EMAIL_FROM_NAME || 'Palmetto Peptides';
-  const fromEmail = process.env.EMAIL_FROM || 'support@palmettopeptides.com';
+  const fromName = process.env.EMAIL_FROM_NAME || 'Palmetto AI Automation';
+  const fromEmail = process.env.EMAIL_FROM || 'support@palmettoaiautomation.com';
 
   const msg = {
     to: invoice.customer_email,
     from: { email: fromEmail, name: fromName },
-    subject: `Invoice ${invoice.invoice_number} — Palmetto Peptides`,
+    subject: `Invoice ${invoice.invoice_number} — Palmetto AI Automation`,
     html,
     attachments: [],
   };
