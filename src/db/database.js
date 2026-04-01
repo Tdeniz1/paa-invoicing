@@ -171,6 +171,12 @@ async function markCancelled(id) {
   return updateInvoice(id, { status: 'cancelled' });
 }
 
+async function deleteInvoice(id) {
+  await initSchema();
+  const { rows } = await pool.query('DELETE FROM invoices WHERE id = $1 RETURNING id', [id]);
+  return rows[0] || null;
+}
+
 async function getStats() {
   await initSchema();
   const now = new Date();
@@ -205,5 +211,6 @@ module.exports = {
   updateInvoice,
   markPaid,
   markCancelled,
+  deleteInvoice,
   getStats,
 };

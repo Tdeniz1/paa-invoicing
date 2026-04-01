@@ -426,6 +426,7 @@ async function loadInvoices() {
             <button class="resend-btn" onclick="resendInvoice(${inv.id})">Resend</button>
             <button class="pay-btn" onclick="markPaid(${inv.id})">Mark Paid</button>
           ` : ''}
+          <button style="color:#f85149;" onclick="deleteInvoice(${inv.id}, '${esc(inv.invoice_number)}')">Delete</button>
         </td>
       </tr>
     `).join('');
@@ -439,6 +440,14 @@ async function markPaid(id) {
   if (!confirm('Mark this invoice as paid?')) return;
   const res = await apiFetch(API + '/' + id + '/mark-paid', { method: 'POST' });
   toast(res.message || 'Marked as paid', 'success');
+  loadInvoices();
+  loadStats();
+}
+
+async function deleteInvoice(id, num) {
+  if (!confirm(`Delete invoice ${num}? This cannot be undone.`)) return;
+  const res = await apiFetch(API + '/' + id, { method: 'DELETE' });
+  toast(res.message || res.error || 'Deleted', res.error ? 'error' : 'success');
   loadInvoices();
   loadStats();
 }

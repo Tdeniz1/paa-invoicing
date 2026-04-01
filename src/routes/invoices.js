@@ -103,4 +103,16 @@ router.post('/:id/cancel', async (req, res) => {
   }
 });
 
+// Delete invoice
+router.delete('/:id', async (req, res) => {
+  try {
+    const result = await db.deleteInvoice(parseInt(req.params.id));
+    if (!result) return res.status(404).json({ error: 'Invoice not found' });
+    res.json({ message: 'Invoice deleted' });
+  } catch (err) {
+    console.error('[invoices] Delete error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
