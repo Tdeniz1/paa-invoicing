@@ -202,8 +202,9 @@ async function generateInvoicePdf(invoice) {
     const btnY = totY + 20;
 
     doc.roundedRect(btnX, btnY, btnW, btnH, 6).fill(COLORS.payButton);
+    doc.link(btnX, btnY, btnW, btnH, paymentUrl);
     doc.font('Helvetica-Bold').fontSize(14).fillColor(COLORS.bgDark);
-    doc.text('PAY NOW', btnX, btnY + 12, { width: btnW, align: 'center' });
+    doc.text('PAY NOW', btnX, btnY + 12, { width: btnW, align: 'center', link: paymentUrl });
 
     // Payment link text below button
     if (paymentUrl && paymentUrl !== '#') {
