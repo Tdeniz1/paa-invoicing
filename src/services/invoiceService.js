@@ -77,8 +77,14 @@ async function processAndSendInvoice(invoiceId) {
 
   // 3. Send email
   console.log(`[invoice] Sending email to ${invoice.customer_email}...`);
-  await sendInvoiceEmail(invoice, pdfBuffer);
-  console.log(`[invoice] Email sent.`);
+  try {
+    await sendInvoiceEmail(invoice, pdfBuffer);
+    await db.markEmailSent(invoice.id);
+    console.log(`[invoice] Email sent.`);
+  } catch (err) {
+    await db.markEmailFailed(invoice.id, err && err.message);
+    throw err;
+  }
 
   console.log(`[invoice] Processed and sent ${invoice.invoice_number} to ${invoice.customer_email}`);
   return invoice;
@@ -102,7 +108,13 @@ async function resendInvoice(invoiceId) {
   }
 
   const pdfBuffer = await generateInvoicePdf(invoice);
-  await sendInvoiceEmail(invoice, pdfBuffer);
+  try {
+    await sendInvoiceEmail(invoice, pdfBuffer);
+    await db.markEmailSent(invoice.id);
+  } catch (err) {
+    await db.markEmailFailed(invoice.id, err && err.message);
+    throw err;
+  }
   console.log(`[invoice] Resent ${invoice.invoice_number} to ${invoice.customer_email}`);
   return invoice;
 }

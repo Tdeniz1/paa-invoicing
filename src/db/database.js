@@ -28,14 +28,64 @@ async function initSchema() {
       stripe_session_id TEXT,
       status TEXT DEFAULT 'pending',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      paid_at TIMESTAMP
+      paid_at TIMESTAMP,
+      email_sent_at TIMESTAMP,
+      email_attempts INT DEFAULT 0,
+      last_email_error TEXT
     );
+
+    ALTER TABLE invoices ADD COLUMN IF NOT EXISTS email_sent_at TIMESTAMP;
+    ALTER TABLE invoices ADD COLUMN IF NOT EXISTS email_attempts INT DEFAULT 0;
+    ALTER TABLE invoices ADD COLUMN IF NOT EXISTS last_email_error TEXT;
 
     CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
     CREATE INDEX IF NOT EXISTS idx_invoices_shopify_order_id ON invoices(shopify_order_id);
     CREATE INDEX IF NOT EXISTS idx_invoices_stripe_session_id ON invoices(stripe_session_id);
+    CREATE INDEX IF NOT EXISTS idx_invoices_email_sent_at ON invoices(email_sent_at);
   `);
   initialized = true;
+}
+
+async function listUnsentInvoices({ olderThanMinutes = 3, maxAttempts = 5, limit = 50 } = {}) {
+  await initSchema();
+  const { rows } = await pool.query(
+    `SELECT * FROM invoices
+     WHERE status = 'pending'
+       AND email_sent_at IS NULL
+       AND COALESCE(email_attempts, 0) < $1
+       AND created_at < NOW() - ($2 || ' minutes')::interval
+     ORDER BY created_at ASC
+     LIMIT $3`,
+    [maxAttempts, String(olderThanMinutes), limit]
+  );
+  return rows;
+}
+
+async function markEmailSent(id) {
+  await initSchema();
+  const { rows } = await pool.query(
+    `UPDATE invoices
+     SET email_sent_at = NOW(),
+         email_attempts = COALESCE(email_attempts, 0) + 1,
+         last_email_error = NULL
+     WHERE id = $1
+     RETURNING *`,
+    [id]
+  );
+  return rows[0] || null;
+}
+
+async function markEmailFailed(id, errorMessage) {
+  await initSchema();
+  const { rows } = await pool.query(
+    `UPDATE invoices
+     SET email_attempts = COALESCE(email_attempts, 0) + 1,
+         last_email_error = $2
+     WHERE id = $1
+     RETURNING *`,
+    [id, String(errorMessage || '').slice(0, 1000)]
+  );
+  return rows[0] || null;
 }
 
 // --- Invoice Queries ---
@@ -213,9 +263,12 @@ module.exports = {
   getInvoiceByShopifyOrderId,
   getInvoiceByStripeSessionId,
   listInvoices,
+  listUnsentInvoices,
   updateInvoice,
   markPaid,
   markCancelled,
+  markEmailSent,
+  markEmailFailed,
   deleteInvoice,
   getStats,
 };
