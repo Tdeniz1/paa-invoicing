@@ -1,8 +1,18 @@
 # Palmetto Invoicing System
 
-Branded invoice generation, Stripe payment processing, and Shopify integration for Palmetto Peptides.
+Branded invoice generation, Stripe payment processing, Shopify integration, **and recurring monthly client billing** (PAA SEO retainers).
 
-**Stack:** Node.js + Express, SQLite (better-sqlite3), Stripe Checkout, Shopify webhooks, Puppeteer PDF, Nodemailer
+**Stack:** Node.js + Express, Postgres (`pg`), Stripe Checkout, Shopify webhooks, pdfkit, SendGrid
+
+## Two products in one app
+
+| | Palmetto Peptides | PAA recurring (SEO retainers) |
+|---|---|---|
+| Trigger | Shopify webhook on order creation | Railway cron — first Monday of each month |
+| Invoice number | `PAA-1027` (Shopify order #) | `PAA-2026-0001` monthly / `PAA-PD-2026-0001` past due |
+| Template | `email-peptides.html` + Peptides PDF header | `email-paa.html` (or `email-paa-pastdue.html`) + PAA PDF header |
+| NET | 7 days | 3 days — past-due replacement triggers on day 4 |
+| Past due behavior | n/a | Original cancelled, red-banner replacement sent, client `seo_paused=TRUE` |
 
 ---
 
@@ -226,6 +236,77 @@ ngrok http 3001
 ```
 
 **Production:** Deploy to a VPS or Railway.app behind `invoices.palmettoaiautomation.com`. Make sure Puppeteer dependencies are installed on the server (Chromium).
+
+---
+
+## PAA recurring billing (SEO retainers)
+
+### Adding a client
+
+```bash
+curl -u admin:$ADMIN_PASSWORD -X POST $APP_URL/api/clients \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Angela Cash Real Estate",
+    "email": "angela@example.com",
+    "monthly_amount": 750,
+    "service_title": "Monthly SEO Retainer — Local SEO + AI Visibility",
+    "service_description": "Blog cron, monthly audit, GBP optimization, AI Overviews tracking"
+  }'
+```
+
+The client gets a `slug` (auto-derived from `name`) which the SEO crons use to self-pause:
+
+```bash
+GET $APP_URL/public/seo-status/angela-cash-real-estate
+# → { slug, active, seo_paused, reason, paused_at }
+```
+
+### Crons (deployed on Railway)
+
+| Cron | Script | Schedule | What it does |
+|---|---|---|---|
+| Unsent sweep | `cron/check_unsent.js` | every 10 min | Resends invoices that failed to email |
+| **Monthly billing** | `cron/monthly_billing.js` | `0 13 * * 1` (Mondays 9am EST) | Only fires on the **first Monday** of each month — generates monthly invoices for every active client |
+| **Past-due sweeper** | `cron/past_due_check.js` | `0 14 * * *` (daily 10am EST) | Cancels any pending PAA invoice older than 3 days, sends past-due replacement, pauses SEO |
+
+### Past-due flow
+
+```
+Day 0 (first Monday)  → monthly invoice sent, NET 3, SEO active
+Day 4 (sweeper run)   → original cancelled, PAST DUE invoice sent, client.seo_paused=TRUE
+Day 7+ (sweeper)      → keeps client paused, optionally pings PAST_DUE_WEBHOOK_URL for follow-up
+Payment received      → Stripe webhook → invoice marked paid → manually unpause via /api/clients/:id/unpause-seo
+```
+
+### How client SEO crons should self-pause
+
+Add this check to the top of any per-client blog-cron / audit-cron:
+
+```js
+const status = await fetch(`${process.env.INVOICING_URL}/public/seo-status/${process.env.CLIENT_SLUG}`).then(r => r.json());
+if (status.seo_paused) {
+  console.log(`[cron] SEO paused: ${status.reason} — exiting no-op`);
+  process.exit(0);
+}
+```
+
+### Manual operator endpoints
+
+```
+POST /api/clients/:id/pause-seo      { reason }
+POST /api/clients/:id/unpause-seo
+POST /api/clients/:id/invoice-now    { billing_period?: "YYYY-MM" }
+GET  /api/clients
+```
+
+### Environment variables (additions)
+
+| Variable | Required | Description |
+|---|---|---|
+| `PAST_DUE_DAYS` | No | Days before past-due trigger (default: 3) |
+| `PAST_DUE_WEBHOOK_URL` | No | URL to POST past-due events to (operator notification) |
+| `FORCE_MONTHLY_BILLING` | No | Set to `1` to bypass the first-Monday check (testing) |
 
 ---
 

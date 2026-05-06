@@ -119,9 +119,102 @@ async function resendInvoice(invoiceId) {
   return invoice;
 }
 
+/**
+ * Create a recurring monthly invoice for a client. Idempotent per billing_period.
+ * Returns the existing invoice if one already exists for this period.
+ */
+async function createMonthlyInvoiceForClient(client, billingPeriod) {
+  if (!client) throw new Error('client required');
+  if (!billingPeriod) throw new Error('billingPeriod required (YYYY-MM)');
+
+  const exists = await db.clientHasInvoiceForPeriod(client.id, billingPeriod);
+  if (exists) {
+    console.log(`[invoice] ${client.slug} already has invoice for ${billingPeriod} — skipping`);
+    return null;
+  }
+
+  const periodLabel = (() => {
+    const [y, m] = billingPeriod.split('-');
+    return new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1)
+      .toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+  })();
+
+  const lineItems = [{
+    name: `${client.service_title} — ${periodLabel}`,
+    quantity: 1,
+    price: Number(client.monthly_amount),
+  }];
+
+  const today = new Date();
+  const due = new Date(today.getTime() + 3 * 86400000);
+
+  const invoice = await db.createInvoice({
+    brand: 'palmetto-ai-automation',
+    customer_name: client.name,
+    customer_email: client.email,
+    line_items: lineItems,
+    subtotal: Number(client.monthly_amount),
+    total: Number(client.monthly_amount),
+    client_id: client.id,
+    invoice_type: 'monthly',
+    due_date: due.toISOString().slice(0, 10),
+    billing_period: billingPeriod,
+  });
+
+  await db.updateClient(client.id, {
+    last_invoice_at: new Date().toISOString(),
+    last_invoice_id: invoice.id,
+  });
+
+  return invoice;
+}
+
+/**
+ * Create a "past due" replacement invoice for an unpaid monthly invoice.
+ * Cancels the original and pauses client SEO.
+ */
+async function createPastDueReplacement(originalInvoice) {
+  if (!originalInvoice.client_id) {
+    throw new Error(`invoice ${originalInvoice.invoice_number} has no client_id — cannot create past-due replacement`);
+  }
+  const client = await db.getClientById(originalInvoice.client_id);
+  if (!client) throw new Error(`client ${originalInvoice.client_id} not found`);
+
+  // Cancel the original (it becomes inactive)
+  await db.markCancelled(originalInvoice.id);
+
+  const today = new Date();
+  const due = new Date(today.getTime() + 3 * 86400000);
+
+  // Re-use original line items so the customer sees what they're being billed for
+  const lineItems = typeof originalInvoice.line_items === 'string'
+    ? JSON.parse(originalInvoice.line_items)
+    : originalInvoice.line_items;
+
+  const replacement = await db.createInvoice({
+    brand: 'palmetto-ai-automation',
+    customer_name: originalInvoice.customer_name,
+    customer_email: originalInvoice.customer_email,
+    line_items: lineItems,
+    subtotal: Number(originalInvoice.subtotal),
+    total: Number(originalInvoice.total),
+    client_id: client.id,
+    parent_invoice_id: originalInvoice.id,
+    invoice_type: 'past_due',
+    due_date: due.toISOString().slice(0, 10),
+    billing_period: originalInvoice.billing_period,
+  });
+
+  await db.pauseClientSeo(client.id, `unpaid invoice ${originalInvoice.invoice_number}`);
+
+  return { replacement, client, original: originalInvoice };
+}
+
 module.exports = {
   createInvoiceFromShopifyOrder,
   createManualInvoice,
   processAndSendInvoice,
   resendInvoice,
+  createMonthlyInvoiceForClient,
+  createPastDueReplacement,
 };

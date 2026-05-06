@@ -25,10 +25,15 @@ async function generateInvoicePdf(invoice) {
     ? JSON.parse(invoice.line_items)
     : invoice.line_items;
 
-  // Invoice dates
+  const isPastDue = invoice.invoice_type === 'past_due';
+  const isMonthly = invoice.invoice_type === 'monthly';
+
+  // Invoice dates — use invoice.due_date if explicitly set, else default by type
   const createdDate = new Date(invoice.created_at);
-  const dueDate = new Date(createdDate);
-  dueDate.setDate(dueDate.getDate() + 7); // NET 7
+  const dueDate = invoice.due_date
+    ? new Date(invoice.due_date)
+    : new Date(createdDate.getTime() + (isMonthly || isPastDue ? 3 : 7) * 86400000);
+  const netLabel = isMonthly || isPastDue ? 'NET 3' : 'NET 7';
 
   // Parse customer address
   let addressLines = [];
@@ -70,25 +75,34 @@ async function generateInvoicePdf(invoice) {
     // ── Full-page dark background ──
     doc.rect(0, 0, W, H).fill(COLORS.bgDark);
 
+    // ── Past-due banner (only for past_due invoices) ──
+    if (isPastDue) {
+      doc.rect(0, 0, W, 28).fill('#f85149');
+      doc.font('Helvetica-Bold').fontSize(13).fillColor('#0d1117');
+      doc.text('PAYMENT PAST DUE', 0, 8, { width: W, align: 'center', characterSpacing: 3 });
+    }
+
+    const headerTop = isPastDue ? 28 : 0;
+
     // ── Header band ──
-    doc.rect(0, 0, W, 120).fill(COLORS.bgMedium);
+    doc.rect(0, headerTop, W, 120).fill(COLORS.bgMedium);
 
     // Logo
     const logoPath = path.join(__dirname, '..', '..', 'assets', 'palmetto-ai-automation-logo.jpg');
     if (fs.existsSync(logoPath)) {
       const logoBuffer = fs.readFileSync(logoPath);
-      doc.image(logoBuffer, M, 20, { height: 80 });
+      doc.image(logoBuffer, M, headerTop + 20, { height: 80 });
     }
 
     // Invoice title — right side of header
-    doc.font('Helvetica-Bold').fontSize(28).fillColor(COLORS.textWhite);
-    doc.text('INVOICE', M, 35, { width: W - M * 2, align: 'right' });
+    doc.font('Helvetica-Bold').fontSize(28).fillColor(isPastDue ? '#f85149' : COLORS.textWhite);
+    doc.text(isPastDue ? 'PAST DUE' : 'INVOICE', M, headerTop + 35, { width: W - M * 2, align: 'right' });
 
     doc.font('Helvetica').fontSize(10).fillColor(COLORS.accent);
-    doc.text(invoice.invoice_number, M, 68, { width: W - M * 2, align: 'right' });
+    doc.text(invoice.invoice_number, M, headerTop + 68, { width: W - M * 2, align: 'right' });
 
     // ── Invoice meta row ──
-    const metaY = 140;
+    const metaY = headerTop + 140;
     doc.rect(M, metaY, W - M * 2, 60).fill(COLORS.bgLight);
 
     const metaCol1 = M + 15;
@@ -97,20 +111,22 @@ async function generateInvoicePdf(invoice) {
 
     doc.font('Helvetica').fontSize(8).fillColor(COLORS.textMuted);
     doc.text('INVOICE DATE', metaCol1, metaY + 12);
-    doc.text('DUE DATE (NET 7)', metaCol2, metaY + 12);
+    doc.text(`DUE DATE (${netLabel})`, metaCol2, metaY + 12);
     doc.text('STATUS', metaCol3, metaY + 12);
 
     doc.font('Helvetica-Bold').fontSize(11).fillColor(COLORS.textWhite);
     doc.text(formatDate(createdDate), metaCol1, metaY + 28);
     doc.text(formatDate(dueDate), metaCol2, metaY + 28);
 
-    const statusText = (invoice.status || 'pending').toUpperCase();
-    const statusColor = statusText === 'PAID' ? COLORS.accent : '#FBBF24';
+    const statusText = isPastDue ? 'PAST DUE' : (invoice.status || 'pending').toUpperCase();
+    const statusColor = statusText === 'PAID' ? COLORS.accent
+      : isPastDue ? '#f85149'
+      : '#FBBF24';
     doc.font('Helvetica-Bold').fontSize(11).fillColor(statusColor);
     doc.text(statusText, metaCol3, metaY + 28);
 
     // ── Bill To section ──
-    const billY = 225;
+    const billY = headerTop + 225;
     doc.font('Helvetica').fontSize(8).fillColor(COLORS.accent);
     doc.text('BILL TO', M, billY);
 
@@ -129,7 +145,7 @@ async function generateInvoicePdf(invoice) {
     }
 
     // ── Line items table ──
-    const tableTop = 320;
+    const tableTop = headerTop + 320;
     const colX = {
       name: M,
       qty: 350,

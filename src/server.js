@@ -115,6 +115,10 @@ app.get('/admin', (req, res) => {
 
 // API routes
 app.use('/api/invoices', require('./routes/invoices'));
+app.use('/api/clients', require('./routes/clients'));
+
+// Public routes (no auth) — SEO crons poll this
+app.use('/public', require('./routes/public'));
 
 // Webhook routes (no auth — verified by signature)
 app.use('/webhooks', require('./routes/webhooks'));

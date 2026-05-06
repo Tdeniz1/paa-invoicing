@@ -5,7 +5,10 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "cron:unsent": "node cron/check_unsent.js",
+    "cron:monthly-billing": "node cron/monthly_billing.js",
+    "cron:past-due": "node cron/past_due_check.js"
   },
   "dependencies": {
     "@sendgrid/mail": "^8.1.6",

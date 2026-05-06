@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background:#0d1117;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0d1117;padding:30px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#161b22;border-radius:10px;overflow:hidden;border:1px solid #21262d;">
+
+          <!-- Header bar with logo -->
+          <tr>
+            <td style="background:#1B1F3B;padding:24px 32px;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td>
+                    <img src="{{logo_url}}" alt="Palmetto AI Automation" style="height:48px;width:auto;display:block;" />
+                  </td>
+                  <td align="right">
+                    <span style="color:#4ADE80;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;">Invoice</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px;">
+
+              <p style="color:#e6edf3;font-size:15px;margin:0 0 16px;">
+                Hi {{customer_name}},
+              </p>
+              <p style="color:#9ca3af;font-size:14px;margin:0 0 24px;line-height:1.6;">
+                Here's your monthly invoice <strong style="color:#fff;">{{invoice_number}}</strong> from Palmetto AI Automation
+                covering <strong style="color:#fff;">{{service_title}}</strong> for {{billing_period_label}}.
+                The PDF is attached and the button below opens secure card checkout.
+              </p>
+
+              <!-- Invoice summary card -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#0d1117;border:1px solid #21262d;border-radius:8px;margin-bottom:24px;">
+                <tr>
+                  <td style="padding:20px;">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="color:#6e7681;font-size:11px;text-transform:uppercase;letter-spacing:1px;padding-bottom:4px;">Invoice #</td>
+                        <td align="right" style="color:#6e7681;font-size:11px;text-transform:uppercase;letter-spacing:1px;padding-bottom:4px;">Issued</td>
+                        <td align="right" style="color:#6e7681;font-size:11px;text-transform:uppercase;letter-spacing:1px;padding-bottom:4px;">Due</td>
+                      </tr>
+                      <tr>
+                        <td style="color:#fff;font-size:15px;font-weight:600;">{{invoice_number}}</td>
+                        <td align="right" style="color:#c9d1d9;font-size:13px;">{{date}}</td>
+                        <td align="right" style="color:#c9d1d9;font-size:13px;">{{due_date}}</td>
+                      </tr>
+                    </table>
+
+                    <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;border-top:1px solid #21262d;padding-top:12px;">
+                      <tr>
+                        <td style="color:#6e7681;font-size:11px;text-transform:uppercase;letter-spacing:1px;padding:4px 0;">Description</td>
+                        <td style="color:#6e7681;font-size:11px;text-transform:uppercase;letter-spacing:1px;padding:4px 0;text-align:right;">Amount</td>
+                      </tr>
+                      {{line_items_rows}}
+                    </table>
+
+                    <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;border-top:1px solid #21262d;padding-top:12px;">
+                      <tr>
+                        <td style="color:#fff;font-size:18px;font-weight:700;padding:6px 0 0;">Total Due</td>
+                        <td align="right" style="color:#4ADE80;font-size:20px;font-weight:700;padding:6px 0 0;">${{total}}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center" style="padding:8px 0 24px;">
+                    <a href="{{payment_link}}" style="display:inline-block;background:#22C55E;color:#0d1117;padding:14px 40px;border-radius:8px;text-decoration:none;font-size:16px;font-weight:700;letter-spacing:0.5px;">
+                      Pay Now &mdash; ${{total}}
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="color:#6e7681;font-size:12px;margin:0;line-height:1.6;text-align:center;">
+                Payment is due by {{due_date}}. Invoices unpaid after 3 days will trigger a Past-Due notice and SEO services will be paused until payment is received.
+                Reply to this email or contact support@palmettoaiautomation.com with any questions.
+              </p>
+
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background:#0d1117;padding:18px 32px;border-top:1px solid #21262d;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="color:#484f58;font-size:11px;">
+                    Palmetto AI Automation &bull; palmettoaiautomation.com
+                  </td>
+                  <td align="right" style="color:#484f58;font-size:11px;">
+                    support@palmettoaiautomation.com
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
