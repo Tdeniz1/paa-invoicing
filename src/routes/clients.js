@@ -32,12 +32,15 @@ router.get('/:id', async (req, res) => {
 // Create client
 router.post('/', async (req, res) => {
   try {
-    const { name, email, monthly_amount, service_title, service_description, active } = req.body || {};
+    const { name, email, monthly_amount, service_title, service_description, active, billing_day } = req.body || {};
     if (!name || !email || monthly_amount == null || !service_title) {
       return res.status(400).json({ error: 'name, email, monthly_amount, service_title are required' });
     }
+    if (billing_day != null && (!Number.isInteger(billing_day) || billing_day < 1 || billing_day > 28)) {
+      return res.status(400).json({ error: 'billing_day must be an integer between 1 and 28 (or omitted for first-Monday billing)' });
+    }
     const client = await db.createClient({
-      name, email, monthly_amount, service_title, service_description, active,
+      name, email, monthly_amount, service_title, service_description, active, billing_day,
     });
     res.status(201).json({ client });
   } catch (err) {
@@ -49,6 +52,10 @@ router.post('/', async (req, res) => {
 // Update client
 router.put('/:id', async (req, res) => {
   try {
+    const bd = (req.body || {}).billing_day;
+    if (bd != null && (!Number.isInteger(bd) || bd < 1 || bd > 28)) {
+      return res.status(400).json({ error: 'billing_day must be an integer between 1 and 28 (or null for first-Monday billing)' });
+    }
     const client = await db.updateClient(parseInt(req.params.id), req.body || {});
     if (!client) return res.status(404).json({ error: 'Client not found' });
     res.json({ client });

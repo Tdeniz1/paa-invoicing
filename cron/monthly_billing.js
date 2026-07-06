@@ -2,9 +2,12 @@
 /**
  * Monthly billing cron.
  *
- * Schedule: every Monday morning (Railway cron schedule on the service).
- * Behavior: only generates + sends invoices on the FIRST Monday of each month.
- *           Other Mondays it exits cleanly with a no-op log line.
+ * Schedule: every morning (Railway cron schedule on the service).
+ * Behavior: each active client is billed on their own billing day —
+ *   - clients with billing_day set (1-28): invoiced on that calendar day
+ *   - clients with billing_day NULL (legacy default): invoiced on the
+ *     FIRST Monday of each month
+ * Days where a client isn't due are a clean no-op for that client.
  *
  * Idempotent: createMonthlyInvoiceForClient checks for an existing invoice
  * with the same billing_period (YYYY-MM), so re-runs on the same day skip.
@@ -18,6 +21,11 @@ function isFirstMondayOfMonth(d) {
   return d.getDay() === 1 && d.getDate() >= 1 && d.getDate() <= 7;
 }
 
+function isClientDueToday(client, d) {
+  if (client.billing_day != null) return d.getDate() === client.billing_day;
+  return isFirstMondayOfMonth(d);
+}
+
 function currentBillingPeriod(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
@@ -27,20 +35,21 @@ async function main() {
   const force = process.env.FORCE_MONTHLY_BILLING === '1';
   console.log(`[monthly-billing] Starting at ${startedAt.toISOString()} (force=${force})`);
 
-  if (!force && !isFirstMondayOfMonth(startedAt)) {
-    console.log(`[monthly-billing] Today is not the first Monday of the month — exiting no-op.`);
-    return;
-  }
-
   await db.initSchema();
 
   const clients = await db.listClients({ active: true });
-  console.log(`[monthly-billing] ${clients.length} active client(s).`);
+  const due = force ? clients : clients.filter(c => isClientDueToday(c, startedAt));
+  console.log(`[monthly-billing] ${clients.length} active client(s), ${due.length} due today.`);
+
+  if (due.length === 0) {
+    console.log(`[monthly-billing] No clients due today — exiting no-op.`);
+    return;
+  }
 
   const period = currentBillingPeriod(startedAt);
   let created = 0, sent = 0, skipped = 0, failed = 0;
 
-  for (const client of clients) {
+  for (const client of due) {
     try {
       const invoice = await createMonthlyInvoiceForClient(client, period);
       if (!invoice) {

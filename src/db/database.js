@@ -61,6 +61,8 @@ async function initSchema() {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 
+    ALTER TABLE clients ADD COLUMN IF NOT EXISTS billing_day INT;
+
     CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
     CREATE INDEX IF NOT EXISTS idx_invoices_shopify_order_id ON invoices(shopify_order_id);
     CREATE INDEX IF NOT EXISTS idx_invoices_stripe_session_id ON invoices(stripe_session_id);
@@ -315,8 +317,8 @@ async function createClient(data) {
   }
 
   const { rows } = await pool.query(
-    `INSERT INTO clients (slug, name, email, monthly_amount, service_title, service_description, active)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `INSERT INTO clients (slug, name, email, monthly_amount, service_title, service_description, active, billing_day)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      RETURNING *`,
     [
       slug,
@@ -326,6 +328,7 @@ async function createClient(data) {
       data.service_title,
       data.service_description || null,
       data.active !== false,
+      data.billing_day != null ? Number(data.billing_day) : null,
     ]
   );
   return rows[0];
@@ -361,7 +364,7 @@ async function updateClient(id, fields) {
   await initSchema();
   const allowed = [
     'name', 'email', 'monthly_amount', 'service_title', 'service_description',
-    'active', 'seo_paused', 'seo_paused_reason', 'seo_paused_at',
+    'active', 'billing_day', 'seo_paused', 'seo_paused_reason', 'seo_paused_at',
     'last_invoice_at', 'last_invoice_id',
   ];
   const sets = [];
